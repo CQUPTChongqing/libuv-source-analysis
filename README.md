@@ -1,73 +1,73 @@
-libuv source analysis - Say it from libuv  
-libuvÔ´Âë·ÖÎö - ´ÓlibuvËµ¿ªÀ´
+ï»¿libuv source analysis - Say it from libuv  
+libuvæºç åˆ†æ - ä»libuvè¯´å¼€æ¥
 
 Wiki: https://github.com/paulran/libuv-source-analysis/wiki  
 Website: http://paulran.github.io/libuv-source-analysis
 
 
 The project objectives:  
-ÏîÄ¿Ä¿±ê£º  
+é¡¹ç›®ç›®æ ‡ï¼š  
 1. Be able to use libuv in future projects.  
-1. ÔÚ½«À´ÏîÄ¿ÖĞÄÜ¹»Ê¹ÓÃlibuv¡£  
+1. åœ¨å°†æ¥é¡¹ç›®ä¸­èƒ½å¤Ÿä½¿ç”¨libuvã€‚  
 2. Sum up the relevant knowledge.  
-2. ×Ü½áÏà¹ØµÄÖªÊ¶¡£  
+2. æ€»ç»“ç›¸å…³çš„çŸ¥è¯†ã€‚  
 
 
 The analytical methods:  
-·ÖÎö·½·¨£º  
+åˆ†ææ–¹æ³•ï¼š  
 1. Designer angle: Ask why the design is like this? Are there any other designs?  
-1. Éè¼ÆÕß½Ç¶È£º¶àÎÊÎªÊ²Ã´ÕâÃ´Éè¼Æ£¿ÊÇ·ñ»¹ÓĞÆäËüÉè¼Æ£¿  
+1. è®¾è®¡è€…è§’åº¦ï¼šå¤šé—®ä¸ºä»€ä¹ˆè¿™ä¹ˆè®¾è®¡ï¼Ÿæ˜¯å¦è¿˜æœ‰å…¶å®ƒè®¾è®¡ï¼Ÿ  
 2. User perspective: what interfaces are provided, what is the use of the process, the use of test examples of debugging and testing, to understand the meaning of the data structure.  
-2. ÓÃ»§½Ç¶È£ºÌá¹©ÁËÄÄĞ©½Ó¿Ú£¬Ê¹ÓÃÁ÷³ÌÊÇÊ²Ã´£¬Ê¹ÓÃ²âÊÔÀı×Óµ÷ÊÔ²âÊÔ£¬ÅªÇåÊı¾İ½á¹¹µÄº¬Òå¡£  
+2. ç”¨æˆ·è§’åº¦ï¼šæä¾›äº†å“ªäº›æ¥å£ï¼Œä½¿ç”¨æµç¨‹æ˜¯ä»€ä¹ˆï¼Œä½¿ç”¨æµ‹è¯•ä¾‹å­è°ƒè¯•æµ‹è¯•ï¼Œå¼„æ¸…æ•°æ®ç»“æ„çš„å«ä¹‰ã€‚  
 
 
 libuv version 1.8.0 (Stable)  
 ```
 libuv-1.8.0 files for Linux
-©À©¤©¤ include
-©¦   ©À©¤©¤ pthread-fixes.h
-©¦   ©À©¤©¤ tree.h
-©¦   ©À©¤©¤ uv-errno.h
-©¦   ©À©¤©¤ uv.h
-©¦   ©À©¤©¤ uv-linux.h
-©¦   ©À©¤©¤ uv-threadpool.h
-©¦   ©À©¤©¤ uv-unix.h
-©¦   ©¸©¤©¤ uv-version.h
-©¸©¤©¤ src
-    ©À©¤©¤ fs-poll.c
-    ©À©¤©¤ heap-inl.h
-    ©À©¤©¤ inet.c
-    ©À©¤©¤ queue.h
-    ©À©¤©¤ threadpool.c
-    ©À©¤©¤ unix
-    ©¦   ©À©¤©¤ async.c
-    ©¦   ©À©¤©¤ atomic-ops.h
-    ©¦   ©À©¤©¤ core.c
-    ©¦   ©À©¤©¤ dl.c
-    ©¦   ©À©¤©¤ fs.c
-    ©¦   ©À©¤©¤ getaddrinfo.c
-    ©¦   ©À©¤©¤ getnameinfo.c
-    ©¦   ©À©¤©¤ internal.h
-    ©¦   ©À©¤©¤ linux-core.c
-    ©¦   ©À©¤©¤ linux-inotify.c
-    ©¦   ©À©¤©¤ linux-syscalls.c
-    ©¦   ©À©¤©¤ linux-syscalls.h
-    ©¦   ©À©¤©¤ loop.c
-    ©¦   ©À©¤©¤ loop-watcher.c
-    ©¦   ©À©¤©¤ pipe.c
-    ©¦   ©À©¤©¤ poll.c
-    ©¦   ©À©¤©¤ process.c
-    ©¦   ©À©¤©¤ proctitle.c
-    ©¦   ©À©¤©¤ pthread-fixes.c
-    ©¦   ©À©¤©¤ signal.c
-    ©¦   ©À©¤©¤ spinlock.h
-    ©¦   ©À©¤©¤ stream.c
-    ©¦   ©À©¤©¤ tcp.c
-    ©¦   ©À©¤©¤ thread.c
-    ©¦   ©À©¤©¤ timer.c
-    ©¦   ©À©¤©¤ tty.c
-    ©¦   ©¸©¤©¤ udp.c
-    ©À©¤©¤ uv-common.c
-    ©À©¤©¤ uv-common.h
-    ©¸©¤©¤ version.c
+â”œâ”€â”€ include
+â”‚   â”œâ”€â”€ pthread-fixes.h
+â”‚   â”œâ”€â”€ tree.h
+â”‚   â”œâ”€â”€ uv-errno.h
+â”‚   â”œâ”€â”€ uv.h
+â”‚   â”œâ”€â”€ uv-linux.h
+â”‚   â”œâ”€â”€ uv-threadpool.h
+â”‚   â”œâ”€â”€ uv-unix.h
+â”‚   â””â”€â”€ uv-version.h
+â””â”€â”€ src
+    â”œâ”€â”€ fs-poll.c
+    â”œâ”€â”€ heap-inl.h
+    â”œâ”€â”€ inet.c
+    â”œâ”€â”€ queue.h
+    â”œâ”€â”€ threadpool.c
+    â”œâ”€â”€ unix
+    â”‚   â”œâ”€â”€ async.c
+    â”‚   â”œâ”€â”€ atomic-ops.h
+    â”‚   â”œâ”€â”€ core.c
+    â”‚   â”œâ”€â”€ dl.c
+    â”‚   â”œâ”€â”€ fs.c
+    â”‚   â”œâ”€â”€ getaddrinfo.c
+    â”‚   â”œâ”€â”€ getnameinfo.c
+    â”‚   â”œâ”€â”€ internal.h
+    â”‚   â”œâ”€â”€ linux-core.c
+    â”‚   â”œâ”€â”€ linux-inotify.c
+    â”‚   â”œâ”€â”€ linux-syscalls.c
+    â”‚   â”œâ”€â”€ linux-syscalls.h
+    â”‚   â”œâ”€â”€ loop.c
+    â”‚   â”œâ”€â”€ loop-watcher.c
+    â”‚   â”œâ”€â”€ pipe.c
+    â”‚   â”œâ”€â”€ poll.c
+    â”‚   â”œâ”€â”€ process.c
+    â”‚   â”œâ”€â”€ proctitle.c
+    â”‚   â”œâ”€â”€ pthread-fixes.c
+    â”‚   â”œâ”€â”€ signal.c
+    â”‚   â”œâ”€â”€ spinlock.h
+    â”‚   â”œâ”€â”€ stream.c
+    â”‚   â”œâ”€â”€ tcp.c
+    â”‚   â”œâ”€â”€ thread.c
+    â”‚   â”œâ”€â”€ timer.c
+    â”‚   â”œâ”€â”€ tty.c
+    â”‚   â””â”€â”€ udp.c
+    â”œâ”€â”€ uv-common.c
+    â”œâ”€â”€ uv-common.h
+    â””â”€â”€ version.c
 ```
