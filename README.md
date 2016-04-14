@@ -26,7 +26,7 @@ The clues of analysis:
 1. The meaning of all member variables of struct uv_loop_t.  
 1. struct uv_loop_t 的所有成员变量的含义。  
 2. The interface and implementation of all kinds of handle, as well as their association with struct uv_loop_t.  
-2. 各种handle提供的接口、实现，以及它们和loop的关联。 
+2. 各种handle提供的接口、实现，以及它们和loop的关联。  
 3. Some auxiliary functions and some details.  
 3. 一些辅助功能和一些细节。  
 
