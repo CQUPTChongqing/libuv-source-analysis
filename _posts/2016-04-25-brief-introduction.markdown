@@ -1,4 +1,4 @@
-﻿---
+---
 layout: post
 title:  "简介"
 date:   2016-04-25 18:14:10 +0800
@@ -30,7 +30,8 @@ The clues of analysis:
 3. 一些辅助功能和一些细节。  
 
 
-libuv version 1.8.0 (Stable)  
+libuv version 1.8.0 (Stable) 
+
 ```
 libuv-1.8.0 files for Linux
 ├── include

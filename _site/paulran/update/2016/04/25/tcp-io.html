@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>tcp io</title>
+  <meta name="description" content="TCP I/O samples:">
+
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="canonical" href="http://paulran.github.io/libuv-source-analysis/paulran/update/2016/04/25/tcp-io.html">
+  <link rel="alternate" type="application/rss+xml" title="从libuv说开来——libuv源码分析" href="http://paulran.github.io/libuv-source-analysis/feed.xml">
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/">从libuv说开来——libuv源码分析</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/about/">About</a>
+          
+        
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">tcp io</h1>
+    <p class="post-meta"><time datetime="2016-04-25T18:14:10+08:00" itemprop="datePublished">Apr 25, 2016</time></p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <h1 id="tcp-io-samples">TCP I/O samples:</h1>
+
+<ol>
+  <li>echo-server: <a href="https://github.com/libuv/libuv/blob/v1.x/test/echo-server.c">https://github.com/libuv/libuv/blob/v1.x/test/echo-server.c</a></li>
+  <li>test-tcp-write-queue-order.c: <a href="https://github.com/libuv/libuv/blob/v1.x/test/test-tcp-write-queue-order.c">https://github.com/libuv/libuv/blob/v1.x/test/test-tcp-write-queue-order.c</a></li>
+</ol>
+
+<h1 id="use-flow">Use Flow:</h1>
+
+<ul>
+  <li>Raw tcp api:</li>
+</ul>
+
+<p><img src="/jpg/tcp_commu_flow.jpg" alt="" /></p>
+
+<ul>
+  <li>libuv tcp api:</li>
+</ul>
+
+<p><img src="/jpg/libuv_tcp_commu_flow.jpg" alt="" /></p>
+
+<h1 id="internal-implementation">Internal implementation:</h1>
+
+<h2 id="struct-uvhandlet">struct uv_handle_t</h2>
+
+<p><img src="/jpg/class_uv_handle.jpg" alt="" /></p>
+
+<p>Notes:</p>
+
+<ul>
+  <li>uv_tcp_t represents a TCP stream or TCP server.</li>
+</ul>
+
+<h2 id="struct-uvtcpt">struct uv_tcp_t</h2>
+
+<p><img src="/jpg/uv_tcp_t.jpg" alt="" /></p>
+
+<p>Notes:</p>
+
+<p><a href="https://github.com/libuv/libuv/blob/v1.x/src/unix/tcp.c">https://github.com/libuv/libuv/blob/v1.x/src/unix/tcp.c</a></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_tcp_init</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span><span class="p">,</span> <span class="n">uv_tcp_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_tcp_init_ex</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span><span class="p">,</span> <span class="n">uv_tcp_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_tcp_open</span><span class="p">(</span><span class="n">uv_tcp_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span> <span class="n">uv_os_sock_t</span> <span class="n">sock</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_tcp_nodelay</span><span class="p">(</span><span class="n">uv_tcp_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span> <span class="kt">int</span> <span class="n">enable</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_tcp_keepalive</span><span class="p">(</span><span class="n">uv_tcp_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span>
+                               <span class="kt">int</span> <span class="n">enable</span><span class="p">,</span>
+                               <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">delay</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_tcp_simultaneous_accepts</span><span class="p">(</span><span class="n">uv_tcp_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span> <span class="kt">int</span> <span class="n">enable</span><span class="p">);</span>
+
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_tcp_bind</span><span class="p">(</span><span class="n">uv_tcp_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span>
+                          <span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span><span class="o">*</span> <span class="n">addr</span><span class="p">,</span>
+                          <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_tcp_getsockname</span><span class="p">(</span><span class="k">const</span> <span class="n">uv_tcp_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span>
+                                 <span class="k">struct</span> <span class="n">sockaddr</span><span class="o">*</span> <span class="n">name</span><span class="p">,</span>
+                                 <span class="kt">int</span><span class="o">*</span> <span class="n">namelen</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_tcp_getpeername</span><span class="p">(</span><span class="k">const</span> <span class="n">uv_tcp_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span>
+                                 <span class="k">struct</span> <span class="n">sockaddr</span><span class="o">*</span> <span class="n">name</span><span class="p">,</span>
+                                 <span class="kt">int</span><span class="o">*</span> <span class="n">namelen</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_tcp_connect</span><span class="p">(</span><span class="n">uv_connect_t</span><span class="o">*</span> <span class="n">req</span><span class="p">,</span>
+                             <span class="n">uv_tcp_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span>
+                             <span class="k">const</span> <span class="k">struct</span> <span class="n">sockaddr</span><span class="o">*</span> <span class="n">addr</span><span class="p">,</span>
+                             <span class="n">uv_connect_cb</span> <span class="n">cb</span><span class="p">);</span>
+</code></pre>
+</div>
+
+<p><a href="https://github.com/libuv/libuv/blob/v1.x/src/unix/stream.c">https://github.com/libuv/libuv/blob/v1.x/src/unix/stream.c</a></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_listen</span><span class="p">(</span><span class="n">uv_stream_t</span><span class="o">*</span> <span class="n">stream</span><span class="p">,</span> <span class="kt">int</span> <span class="n">backlog</span><span class="p">,</span> <span class="n">uv_connection_cb</span> <span class="n">cb</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_accept</span><span class="p">(</span><span class="n">uv_stream_t</span><span class="o">*</span> <span class="n">server</span><span class="p">,</span> <span class="n">uv_stream_t</span><span class="o">*</span> <span class="n">client</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_read_start</span><span class="p">(</span><span class="n">uv_stream_t</span><span class="o">*</span><span class="p">,</span>
+                            <span class="n">uv_alloc_cb</span> <span class="n">alloc_cb</span><span class="p">,</span>
+                            <span class="n">uv_read_cb</span> <span class="n">read_cb</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_read_stop</span><span class="p">(</span><span class="n">uv_stream_t</span><span class="o">*</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_write</span><span class="p">(</span><span class="n">uv_write_t</span><span class="o">*</span> <span class="n">req</span><span class="p">,</span>
+                       <span class="n">uv_stream_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span>
+                       <span class="k">const</span> <span class="n">uv_buf_t</span> <span class="n">bufs</span><span class="p">[],</span>
+                       <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">nbufs</span><span class="p">,</span>
+                       <span class="n">uv_write_cb</span> <span class="n">cb</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_write2</span><span class="p">(</span><span class="n">uv_write_t</span><span class="o">*</span> <span class="n">req</span><span class="p">,</span>
+                        <span class="n">uv_stream_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span>
+                        <span class="k">const</span> <span class="n">uv_buf_t</span> <span class="n">bufs</span><span class="p">[],</span>
+                        <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">nbufs</span><span class="p">,</span>
+                        <span class="n">uv_stream_t</span><span class="o">*</span> <span class="n">send_handle</span><span class="p">,</span>
+                        <span class="n">uv_write_cb</span> <span class="n">cb</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_try_write</span><span class="p">(</span><span class="n">uv_stream_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span>
+                           <span class="k">const</span> <span class="n">uv_buf_t</span> <span class="n">bufs</span><span class="p">[],</span>
+                           <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">nbufs</span><span class="p">);</span>
+</code></pre>
+</div>
+
+<h2 id="struct-uvwritet">struct uv_write_t</h2>
+
+<p><img src="/jpg/uv_write_t.jpg" alt="" /></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="cm">/* Size of object which can be written atomically.
+
+   This macro has different values in different kernel versions.  The
+   latest versions of the kernel use 1024 and this is good choice.  Since
+   the C library implementation of readv/writev is able to emulate the
+   functionality even if the currently running kernel does not support
+   this large value the readv/writev call will not fail because of this.  */</span>
+<span class="cp">#define UIO_MAXIOV  1024
+</span>
+
+<span class="cm">/* Structure for scatter/gather I/O.  */</span>
+<span class="k">struct</span> <span class="n">iovec</span>
+  <span class="p">{</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">iov_base</span><span class="p">;</span> <span class="cm">/* Pointer to data.  */</span>
+    <span class="kt">size_t</span> <span class="n">iov_len</span><span class="p">;</span> <span class="cm">/* Length of data.  */</span>
+  <span class="p">};</span>
+  
+
+<span class="cm">/* Note: May be cast to struct iovec. See writev(2). */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="n">uv_buf_t</span> <span class="p">{</span>
+  <span class="kt">char</span><span class="o">*</span> <span class="n">base</span><span class="p">;</span>
+  <span class="kt">size_t</span> <span class="n">len</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">uv_buf_t</span><span class="p">;</span>
+</code></pre>
+</div>
+
+<h2 id="uvwrite">uv_write()</h2>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">struct</span> <span class="n">iovec</span><span class="o">*</span> <span class="n">iov</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">iovmax</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">iovcnt</span><span class="p">;</span>
+
+<span class="n">iov</span> <span class="o">=</span> <span class="p">(</span><span class="k">struct</span> <span class="n">iovec</span><span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="p">(</span><span class="n">req</span><span class="o">-&gt;</span><span class="n">bufs</span><span class="p">[</span><span class="n">req</span><span class="o">-&gt;</span><span class="n">write_index</span><span class="p">]);</span>
+<span class="n">iovcnt</span> <span class="o">=</span> <span class="n">req</span><span class="o">-&gt;</span><span class="n">nbufs</span> <span class="o">-</span> <span class="n">req</span><span class="o">-&gt;</span><span class="n">write_index</span><span class="p">;</span>
+<span class="n">iovmax</span> <span class="o">=</span> <span class="n">uv__getiovmax</span><span class="p">();</span>
+
+<span class="cm">/* Limit iov count to avoid EINVALs from writev() */</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">iovcnt</span> <span class="o">&gt;</span> <span class="n">iovmax</span><span class="p">)</span>
+  <span class="n">iovcnt</span> <span class="o">=</span> <span class="n">iovmax</span><span class="p">;</span>
+
+
+<span class="k">if</span> <span class="p">(</span><span class="n">iovcnt</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">n</span> <span class="o">=</span> <span class="n">write</span><span class="p">(</span><span class="n">uv__stream_fd</span><span class="p">(</span><span class="n">stream</span><span class="p">),</span> <span class="n">iov</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">iov_base</span><span class="p">,</span> <span class="n">iov</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">iov_len</span><span class="p">);</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+  <span class="n">n</span> <span class="o">=</span> <span class="n">writev</span><span class="p">(</span><span class="n">uv__stream_fd</span><span class="p">(</span><span class="n">stream</span><span class="p">),</span> <span class="n">iov</span><span class="p">,</span> <span class="n">iovcnt</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<p>Notes:<br />
+1. 如果程序S一直调用uv_write向程序C发送消息，但是程序C没有调用uv_read_start，或者程序C卡在了io_poll里，那么程序S请求发送的消息会先堆积在程序C的socket接收缓冲区（Recv-Q），然后在程序S的socket发送缓冲区（Send-Q）里堆积，再然后缓存在uv_stream_t的write_queue里，这会导致程序S占用的内存越来越大。 解决办法：加入类似心跳的机制（程序C发送给S的正常逻辑消息也可算作心跳包）&lt;= a uv_timer_t for detecting timeouts。</p>
+
+<h2 id="struct-uviot">struct uv__io_t</h2>
+
+<p><img src="/jpg/uv__io_t.jpg" alt="" /></p>
+
+<p>Notes:<br />
+1. struct uv__io_t 起到上下关联的作用，它将各种 Handle（uv_tcp_t、uv_udp_t、uv_pipe_t、uv_timer_t等）与 struct uv_loop_t 关联上了。</p>
+
+<h2 id="struct-uvloopt">struct uv_loop_t</h2>
+
+<p><img src="/jpg/uv_loop_t.jpg" alt="" /></p>
+
+<h2 id="struct-uvloopt-associated-with-iopoll">struct uv_loop_t associated with io_poll</h2>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">struct</span> <span class="n">uv_loop_s</span> <span class="p">{</span>
+  <span class="p">...</span> <span class="p">...</span>
+  <span class="kt">unsigned</span> <span class="kt">long</span> <span class="n">flags</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">backend_fd</span><span class="p">;</span> <span class="c1">// Important
+</span>  <span class="p">...</span> <span class="p">...</span>
+  <span class="kt">void</span><span class="o">*</span> <span class="n">watcher_queue</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span> <span class="c1">// Be new or modified watcher for this time.
+</span>  <span class="n">uv__io_t</span><span class="o">**</span> <span class="n">watchers</span><span class="p">;</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">nwatchers</span><span class="p">;</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">nfds</span><span class="p">;</span>
+  <span class="p">...</span> <span class="p">...</span>
+  <span class="kt">uint64_t</span> <span class="n">time</span><span class="p">;</span>
+  <span class="p">...</span> <span class="p">...</span>
+<span class="p">};</span>
+</code></pre>
+</div>
+
+<p><a href="https://github.com/libuv/libuv/blob/v1.x/src/unix/loop.c">https://github.com/libuv/libuv/blob/v1.x/src/unix/loop.c</a></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_loop_init</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_loop_close</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">);</span>
+</code></pre>
+</div>
+
+<p><a href="https://github.com/libuv/libuv/blob/v1.x/src/unix/core.c">https://github.com/libuv/libuv/blob/v1.x/src/unix/core.c</a></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_loop_alive</span><span class="p">(</span><span class="k">const</span> <span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_run</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span><span class="p">,</span> <span class="n">uv_run_mode</span> <span class="n">mode</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">void</span> <span class="n">uv_update_time</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_is_active</span><span class="p">(</span><span class="k">const</span> <span class="n">uv_handle_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">);</span>
+<span class="cm">/* core, src/unix/internal.h */</span>  
+<span class="kt">int</span> <span class="n">uv__nonblock</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">set</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">uv__close</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">uv__cloexec</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="kt">int</span> <span class="n">set</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">uv__socket</span><span class="p">(</span><span class="kt">int</span> <span class="n">domain</span><span class="p">,</span> <span class="kt">int</span> <span class="n">type</span><span class="p">,</span> <span class="kt">int</span> <span class="n">protocol</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">uv__dup</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">);</span>
+<span class="kt">ssize_t</span> <span class="n">uv__recvmsg</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="k">struct</span> <span class="n">msghdr</span> <span class="o">*</span><span class="n">msg</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
+<span class="kt">void</span> <span class="n">uv__make_close_pending</span><span class="p">(</span><span class="n">uv_handle_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">uv__getiovmax</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span>
+
+<span class="kt">void</span> <span class="n">uv__io_init</span><span class="p">(</span><span class="n">uv__io_t</span><span class="o">*</span> <span class="n">w</span><span class="p">,</span> <span class="n">uv__io_cb</span> <span class="n">cb</span><span class="p">,</span> <span class="kt">int</span> <span class="n">fd</span><span class="p">);</span>
+<span class="kt">void</span> <span class="n">uv__io_start</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">,</span> <span class="n">uv__io_t</span><span class="o">*</span> <span class="n">w</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">events</span><span class="p">);</span>
+<span class="kt">void</span> <span class="n">uv__io_stop</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">,</span> <span class="n">uv__io_t</span><span class="o">*</span> <span class="n">w</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">events</span><span class="p">);</span>
+<span class="kt">void</span> <span class="n">uv__io_close</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">,</span> <span class="n">uv__io_t</span><span class="o">*</span> <span class="n">w</span><span class="p">);</span>
+<span class="kt">void</span> <span class="n">uv__io_feed</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">,</span> <span class="n">uv__io_t</span><span class="o">*</span> <span class="n">w</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">uv__io_active</span><span class="p">(</span><span class="k">const</span> <span class="n">uv__io_t</span><span class="o">*</span> <span class="n">w</span><span class="p">,</span> <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">events</span><span class="p">);</span>
+</code></pre>
+</div>
+
+<p><a href="https://github.com/libuv/libuv/blob/v1.x/src/unix/linux-core.c">https://github.com/libuv/libuv/blob/v1.x/src/unix/linux-core.c</a></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kt">int</span> <span class="n">uv__io_check_fd</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">,</span> <span class="kt">int</span> <span class="n">fd</span><span class="p">);</span>
+<span class="kt">void</span> <span class="n">uv__io_poll</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">,</span> <span class="kt">int</span> <span class="n">timeout</span><span class="p">);</span> <span class="cm">/* in milliseconds or -1 */</span>
+
+<span class="cm">/* platform specific */</span>
+<span class="kt">uint64_t</span> <span class="n">uv__hrtime</span><span class="p">(</span><span class="n">uv_clocktype_t</span> <span class="n">type</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">uv__kqueue_init</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">);</span>
+<span class="kt">int</span> <span class="n">uv__platform_loop_init</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">);</span>
+<span class="kt">void</span> <span class="n">uv__platform_loop_delete</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">);</span>
+<span class="kt">void</span> <span class="n">uv__platform_invalidate_fd</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">,</span> <span class="kt">int</span> <span class="n">fd</span><span class="p">);</span>
+</code></pre>
+</div>
+
+<p>Notes:</p>
+
+<ul>
+  <li>UV__EPOLL_CTL_ADD, UV__EPOLL_CTL_MOD and UV__EPOLL_CTL_DEL</li>
+</ul>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>     <span class="n">uv__io_start</span><span class="p">()</span>
+<span class="o">---&gt;</span> <span class="n">QUEUE_INSERT_TAIL</span><span class="p">(</span><span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">watcher_queue</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">w</span><span class="o">-&gt;</span><span class="n">watcher_queue</span><span class="p">);</span>
+<span class="err">　　</span> <span class="n">loop</span><span class="o">-&gt;</span><span class="n">watchers</span><span class="p">[</span><span class="n">w</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">]</span> <span class="o">=</span> <span class="n">w</span><span class="p">;</span>
+<span class="o">---&gt;</span> <span class="k">if</span> <span class="p">(</span><span class="n">w</span><span class="o">-&gt;</span><span class="n">events</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="n">op</span> <span class="o">=</span> <span class="n">UV__EPOLL_CTL_ADD</span><span class="p">;</span>
+<span class="err">　　</span> <span class="k">else</span> <span class="n">op</span> <span class="o">=</span> <span class="n">UV__EPOLL_CTL_MOD</span><span class="p">;</span>
+<span class="err">　　</span> <span class="n">uv__epoll_ctl</span><span class="p">(</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">backend_fd</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="n">w</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">e</span><span class="p">)</span>
+
+     <span class="n">uv__io_stop</span><span class="p">()</span>
+<span class="o">---&gt;</span> <span class="n">loop</span><span class="o">-&gt;</span><span class="n">watchers</span><span class="p">[</span><span class="n">w</span><span class="o">-&gt;</span><span class="n">fd</span><span class="p">]</span> <span class="o">=</span> <span class="nb">NULL</span> <span class="o">&lt;</span><span class="n">br</span><span class="o">&gt;</span>
+<span class="o">---&gt;</span> <span class="n">w</span> <span class="o">=</span> <span class="n">loop</span><span class="o">-&gt;</span><span class="n">watchers</span><span class="p">[</span><span class="n">fd</span><span class="p">];</span> <span class="k">if</span> <span class="p">(</span><span class="n">w</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+<span class="err">　　</span> <span class="n">uv__epoll_ctl</span><span class="p">(</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">backend_fd</span><span class="p">,</span> <span class="n">UV__EPOLL_CTL_DEL</span><span class="p">,</span> <span class="n">fd</span><span class="p">,</span> <span class="n">pe</span><span class="p">);</span> <span class="k">continue</span><span class="p">;</span> <span class="p">}</span>
+</code></pre>
+</div>
+<ul>
+  <li>UV__EPOLLERR and UV__POLLHUP
+    <ul>
+      <li>根据 uv__io_t 它关心的事件（pevents），返回当前事件（events）为 UV__EPOLLIN 或 UV__EPOLLOUT 或两者之和。这样，当对应的文件描述符发生错误时，在 I/O 回调函数里，调用accept、recv、write 等将返回错误。</li>
+    </ul>
+  </li>
+</ul>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="k">struct</span> <span class="n">uv__epoll_event</span><span class="o">*</span> <span class="n">pe</span><span class="p">;</span>  
+    <span class="n">uv__io_t</span><span class="o">*</span> <span class="n">w</span><span class="p">;</span>
+    <span class="n">pe</span><span class="o">-&gt;</span><span class="n">events</span> <span class="o">&amp;=</span> <span class="n">w</span><span class="o">-&gt;</span><span class="n">pevents</span> <span class="o">|</span> <span class="n">UV__POLLERR</span> <span class="o">|</span> <span class="n">UV__POLLHUP</span><span class="p">;</span>  
+    <span class="k">if</span> <span class="p">(</span><span class="n">pe</span><span class="o">-&gt;</span><span class="n">events</span> <span class="o">==</span> <span class="n">UV__EPOLLERR</span> <span class="o">||</span> <span class="n">pe</span><span class="o">-&gt;</span><span class="n">events</span> <span class="o">==</span> <span class="n">UV__EPOLLHUP</span><span class="p">)</span>
+        <span class="n">pe</span><span class="o">-&gt;</span><span class="n">events</span> <span class="o">|=</span> <span class="n">w</span><span class="o">-&gt;</span><span class="n">pevents</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">UV__EPOLLIN</span> <span class="o">|</span> <span class="n">UV__EPOLLOUT</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">pe</span><span class="o">-&gt;</span><span class="n">events</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">w</span><span class="o">-&gt;</span><span class="n">cb</span><span class="p">(</span><span class="n">loop</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">pe</span><span class="o">-&gt;</span><span class="n">events</span><span class="p">);</span>
+        <span class="n">nevents</span><span class="o">++</span><span class="p">;</span>
+    <span class="p">}</span>
+</code></pre>
+</div>
+<ul>
+  <li>错误处理
+    <ul>
+      <li>accept 返回错误码：
+        <ul>
+          <li>EINTR：循环再次调用 accept （libuv 在 Linux 上用的使用 <a href="http://man7.org/linux/man-pages/man2/accept4.2.html">accept4</a>）；</li>
+          <li>EAGAIN 或 EWOULDBLOCK：不是错误，直接返回；</li>
+          <li>ECONNABORTED：循环再次调用 accept；</li>
+          <li>EMFILE 或 ENFILE：利用 loop-&gt;emfile_fd 做特殊处理。</li>
+        </ul>
+      </li>
+      <li>recv 返回错误码 EAGAIN 或 EWOULDBLOCK：再注册一次 UV__POLLIN 事件，等待下一次 io_poll。</li>
+      <li>write 返回错误码 EAGAIN 或 EWOULDBLOCK：stream 是阻塞的，则重头再调用一次 write；否则，再注册一次 UV__POLLOUT 事件，等待下一次 io_poll。</li>
+    </ul>
+  </li>
+  <li>备注：
+    <ul>
+      <li>libuv open a socket in non-blocking close-on-exec mode, atomically if possible. <br />
+sockfd = socket(domain, type | SOCK_NONBLOCK | SOCK_CLOEXEC, protocol);</li>
+    </ul>
+  </li>
+</ul>
+
+
+  </div>
+
+</article>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">从libuv说开来——libuv源码分析</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li>从libuv说开来——libuv源码分析</li>
+          <li><a href="mailto:xiaomaoln@gmail.com">xiaomaoln@gmail.com</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/paulran"><span class="icon icon--github"><svg viewBox="0 0 16 16"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">paulran</span></a>
+
+          </li>
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>协助共享
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
