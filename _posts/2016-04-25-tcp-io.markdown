@@ -15,18 +15,18 @@ categories: pages update
 
 * Raw tcp api:
 
-![]({{ site.baseurl }}/jpg/tcp_commu_flow.jpg)
+![]({{ "/jpg/tcp_commu_flow.jpg" | prepend: site.baseurl }})
 
 * libuv tcp api:
 
-![]({{ site.baseurl }}/jpg/libuv_tcp_commu_flow.jpg)
+![]({{ "/jpg/libuv_tcp_commu_flow.jpg" | prepend: site.baseurl }})
 
 
 # Internal implementation:
 
 ## struct uv_handle_t
 
-![]({{ site.baseurl }}/jpg/class_uv_handle.jpg)
+![]({{ "/jpg/class_uv_handle.jpg" | prepend: site.baseurl }})
 
  Notes: 
 
@@ -34,7 +34,7 @@ categories: pages update
 
 ## struct uv_tcp_t
 
-![]({{ site.baseurl }}/jpg/uv_tcp_t.jpg)
+![]({{ "/jpg/uv_tcp_t.jpg" | prepend: site.baseurl }})
 
  Notes:
 
@@ -92,7 +92,7 @@ UV_EXTERN int uv_try_write(uv_stream_t* handle,
 
 ## struct uv_write_t
 
-![]({{ site.baseurl }}/jpg/uv_write_t.jpg)
+![]({{ "/jpg/uv_write_t.jpg" | prepend: site.baseurl }})
 
 ```c
 /* Size of object which can be written atomically.
@@ -147,7 +147,7 @@ Notes:
 
 ## struct uv__io_t
 
-![]({{ site.baseurl }}/jpg/uv__io_t.jpg)
+![]({{ "/jpg/uv__io_t.jpg" | prepend: site.baseurl }})
 
 Notes:  
 1. struct uv__io_t 起到上下关联的作用，它将各种 Handle（uv_tcp_t、uv_udp_t、uv_pipe_t、uv_timer_t等）与 struct uv_loop_t 关联上了。
