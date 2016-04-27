@@ -9,8 +9,8 @@
   <title>tcp io</title>
   <meta name="description" content="TCP I/O samples:">
 
-  <link rel="stylesheet" href="/css/main.css">
-  <link rel="canonical" href="http://paulran.github.io/libuv-source-analysis/libuv-source-analysis/update/2016/04/25/tcp-io.html">
+  <link rel="stylesheet" href="/libuv-source-analysis/css/main.css">
+  <link rel="canonical" href="http://paulran.github.io/libuv-source-analysis/pages/update/2016/04/25/tcp-io.html">
   <link rel="alternate" type="application/rss+xml" title="从libuv说开来——libuv源码分析" href="http://paulran.github.io/libuv-source-analysis/feed.xml">
 </head>
 
@@ -21,7 +21,7 @@
 
   <div class="wrapper">
 
-    <a class="site-title" href="/">从libuv说开来——libuv源码分析</a>
+    <a class="site-title" href="/libuv-source-analysis/">从libuv说开来——libuv源码分析</a>
 
     <nav class="site-nav">
       <a href="#" class="menu-icon">
@@ -35,7 +35,7 @@
       <div class="trigger">
         
           
-          <a class="page-link" href="/about/">About</a>
+          <a class="page-link" href="/libuv-source-analysis/about/">About</a>
           
         
           
@@ -75,19 +75,19 @@
   <li>Raw tcp api:</li>
 </ul>
 
-<p><img src="/jpg/tcp_commu_flow.jpg" alt="" /></p>
+<p><img src="/libuv-source-analysis/jpg/tcp_commu_flow.jpg" alt="" /></p>
 
 <ul>
   <li>libuv tcp api:</li>
 </ul>
 
-<p><img src="/jpg/libuv_tcp_commu_flow.jpg" alt="" /></p>
+<p><img src="/libuv-source-analysis/jpg/libuv_tcp_commu_flow.jpg" alt="" /></p>
 
 <h1 id="internal-implementation">Internal implementation:</h1>
 
 <h2 id="struct-uvhandlet">struct uv_handle_t</h2>
 
-<p><img src="/jpg/class_uv_handle.jpg" alt="" /></p>
+<p><img src="/libuv-source-analysis/jpg/class_uv_handle.jpg" alt="" /></p>
 
 <p>Notes:</p>
 
@@ -97,7 +97,7 @@
 
 <h2 id="struct-uvtcpt">struct uv_tcp_t</h2>
 
-<p><img src="/jpg/uv_tcp_t.jpg" alt="" /></p>
+<p><img src="/libuv-source-analysis/jpg/uv_tcp_t.jpg" alt="" /></p>
 
 <p>Notes:</p>
 
@@ -155,7 +155,7 @@
 
 <h2 id="struct-uvwritet">struct uv_write_t</h2>
 
-<p><img src="/jpg/uv_write_t.jpg" alt="" /></p>
+<p><img src="/libuv-source-analysis/jpg/uv_write_t.jpg" alt="" /></p>
 
 <div class="highlighter-rouge"><pre class="highlight"><code><span class="cm">/* Size of object which can be written atomically.
 
@@ -210,14 +210,14 @@
 
 <h2 id="struct-uviot">struct uv__io_t</h2>
 
-<p><img src="/jpg/uv__io_t.jpg" alt="" /></p>
+<p><img src="/libuv-source-analysis/jpg/uv__io_t.jpg" alt="" /></p>
 
 <p>Notes:<br />
 1. struct uv__io_t 起到上下关联的作用，它将各种 Handle（uv_tcp_t、uv_udp_t、uv_pipe_t、uv_timer_t等）与 struct uv_loop_t 关联上了。</p>
 
 <h2 id="struct-uvloopt">struct uv_loop_t</h2>
 
-<p><img src="/jpg/uv_loop_t.jpg" alt="" /></p>
+<p><img src="/libuv-source-analysis/jpg/uv_loop_t.jpg" alt="" /></p>
 
 <h2 id="struct-uvloopt-associated-with-iopoll">struct uv_loop_t associated with io_poll</h2>
 

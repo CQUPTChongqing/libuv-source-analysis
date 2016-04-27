@@ -2,7 +2,7 @@
 layout: post
 title:  "tcp io"
 date:   2016-04-25 18:14:10 +0800
-categories: libuv-source-analysis update
+categories: pages update
 ---
 # TCP I/O samples:
 
@@ -15,18 +15,18 @@ categories: libuv-source-analysis update
 
 * Raw tcp api:
 
-![](/jpg/tcp_commu_flow.jpg)
+![]({{ site.baseurl }}/jpg/tcp_commu_flow.jpg)
 
 * libuv tcp api:
 
-![](/jpg/libuv_tcp_commu_flow.jpg)
+![]({{ site.baseurl }}/jpg/libuv_tcp_commu_flow.jpg)
 
 
 # Internal implementation:
 
 ## struct uv_handle_t
 
-![](/jpg/class_uv_handle.jpg)
+![]({{ site.baseurl }}/jpg/class_uv_handle.jpg)
 
  Notes: 
 
@@ -34,7 +34,7 @@ categories: libuv-source-analysis update
 
 ## struct uv_tcp_t
 
-![](/jpg/uv_tcp_t.jpg)
+![]({{ site.baseurl }}/jpg/uv_tcp_t.jpg)
 
  Notes:
 
@@ -92,7 +92,7 @@ UV_EXTERN int uv_try_write(uv_stream_t* handle,
 
 ## struct uv_write_t
 
-![](/jpg/uv_write_t.jpg)
+![]({{ site.baseurl }}/jpg/uv_write_t.jpg)
 
 ```c
 /* Size of object which can be written atomically.
@@ -147,14 +147,14 @@ Notes:
 
 ## struct uv__io_t
 
-![](/jpg/uv__io_t.jpg)
+![]({{ site.baseurl }}/jpg/uv__io_t.jpg)
 
 Notes:  
 1. struct uv__io_t 起到上下关联的作用，它将各种 Handle（uv_tcp_t、uv_udp_t、uv_pipe_t、uv_timer_t等）与 struct uv_loop_t 关联上了。
 
 ## struct uv_loop_t
 
-![](/jpg/uv_loop_t.jpg)
+![]({{ site.baseurl }}/jpg/uv_loop_t.jpg)
 
 ## struct uv_loop_t associated with io_poll
 
