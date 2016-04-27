@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>pipe io</title>
+  <meta name="description" content="struct uv_pipe_t">
+
+  <link rel="stylesheet" href="/libuv-source-analysis/css/main.css">
+  <link rel="canonical" href="http://paulran.github.io/libuv-source-analysis/pages/update/2016/04/25/pipe-io.html">
+  <link rel="alternate" type="application/rss+xml" title="从libuv说开来——libuv源码分析" href="http://paulran.github.io/libuv-source-analysis/feed.xml">
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/libuv-source-analysis/">从libuv说开来——libuv源码分析</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/libuv-source-analysis/about/">About</a>
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">pipe io</h1>
+    <p class="post-meta"><time datetime="2016-04-25T18:14:10+08:00" itemprop="datePublished">Apr 25, 2016</time></p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <h1 id="struct-uvpipet">struct uv_pipe_t</h1>
+
+<p><img src="/libuv-source-analysis/jpg/uv_pipe_t.jpg" alt="" /></p>
+
+<p>Notes: uv_pipe_t is a subclass of <a href="https://github.com/paulran/libuv-source-analysis/wiki/tcp-io#struct-uv_handle_t">uv_handle_t</a>.</p>
+
+<h2 id="pipe-socket-and-sockaddr">pipe socket and sockaddr</h2>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kt">int</span> <span class="n">sockfd</span> <span class="o">=</span> <span class="n">uv__socket</span><span class="p">(</span><span class="n">AF_UNIX</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">pipe_fname</span> <span class="o">=</span> <span class="s">"/tmp/uv-test-sock"</span><span class="p">;</span>
+<span class="k">struct</span> <span class="n">sockaddr_un</span> <span class="n">saddr</span><span class="p">;</span>
+<span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">saddr</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">saddr</span><span class="p">));</span>
+<span class="n">saddr</span><span class="p">.</span><span class="n">sun_family</span> <span class="o">=</span> <span class="n">AF_UNIX</span><span class="p">;</span>
+<span class="n">strncpy</span><span class="p">(</span><span class="n">saddr</span><span class="p">.</span><span class="n">sun_path</span><span class="p">,</span> <span class="n">pipe_fname</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">saddr</span><span class="p">.</span><span class="n">sun_path</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+<span class="n">saddr</span><span class="p">.</span><span class="n">sun_path</span><span class="p">[</span><span class="k">sizeof</span><span class="p">(</span><span class="n">saddr</span><span class="p">.</span><span class="n">sun_path</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="sc">'\0'</span><span class="p">;</span>
+</code></pre>
+</div>
+
+<h2 id="tcp-socket-and-sockaddr">tcp socket and sockaddr</h2>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kt">int</span> <span class="n">sockfd</span> <span class="o">=</span> <span class="n">uv__socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">ip</span> <span class="o">=</span> <span class="s">"0.0.0.0"</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">port</span> <span class="o">=</span> <span class="mi">9123</span><span class="p">;</span>
+<span class="k">struct</span> <span class="n">sockaddr_in</span> <span class="n">addr</span><span class="p">;</span>
+<span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">addr</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">addr</span><span class="p">));</span>
+<span class="n">addr</span><span class="p">.</span><span class="n">sin_family</span> <span class="o">=</span> <span class="n">AF_INET</span><span class="p">;</span>
+<span class="n">addr</span><span class="p">.</span><span class="n">sin_port</span> <span class="o">=</span> <span class="n">htons</span><span class="p">(</span><span class="n">port</span><span class="p">);</span>
+<span class="n">addr</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">.</span><span class="n">s_addr</span> <span class="o">=</span> <span class="n">inet_addr</span><span class="p">(</span><span class="n">ip</span><span class="p">);</span>
+</code></pre>
+</div>
+
+<hr />
+
+<h1 id="pipe-and-socketpair">pipe() and socketpair()</h1>
+
+<ol>
+  <li><a href="http://man7.org/linux/man-pages/man2/pipe.2.html">pipe()</a>: creates a pipe, a unidirectional data channel that can be used for interprocess communication.</li>
+  <li><a href="http://man7.org/linux/man-pages/man2/socketpair.2.html">socketpair()</a>: create a pair of connected sockets.</li>
+</ol>
+
+<hr />
+<p># To create a <a href="https://github.com/paulran/libuv-source-analysis/wiki/tcp-io#struct-uv_loop_t">struct uv_loop_t</a> open file descriptor</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="mi">1</span><span class="p">.</span> <span class="n">open</span> <span class="n">two</span> <span class="n">pipes</span><span class="o">:</span> 
+   <span class="n">I</span><span class="p">.</span> <span class="n">signal</span><span class="p">.</span><span class="n">c</span> <span class="k">static</span> <span class="kt">int</span> <span class="n">uv__signal_lock_pipefd</span><span class="p">[</span><span class="mi">2</span><span class="p">].</span> <span class="n">created</span> <span class="n">in</span> <span class="n">uv__signal_global_once_init</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">uv__signal_global_init</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">uv__make_pipe</span><span class="p">(</span><span class="n">uv__signal_lock_pipefd</span><span class="p">,</span> <span class="mi">0</span><span class="p">).</span>
+   <span class="n">II</span><span class="p">.</span> <span class="n">loop</span><span class="o">-&gt;</span><span class="n">signal_pipefd</span><span class="p">.</span> <span class="n">created</span> <span class="n">in</span> <span class="n">uv_signal_init</span><span class="p">(</span><span class="n">loop</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">child_watcher</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">uv__signal_loop_once_init</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">uv__make_pipe</span><span class="p">(</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">signal_pipefd</span><span class="p">,</span> <span class="n">UV__F_NONBLOCK</span><span class="p">).</span>
+<span class="mi">2</span><span class="p">.</span> <span class="n">open</span> <span class="n">a</span> <span class="n">eventfd</span> <span class="n">in</span> <span class="n">Linux</span><span class="o">:</span> <span class="n">loop</span><span class="o">-&gt;</span><span class="n">async_watcher</span><span class="p">.</span><span class="n">io_watcher</span><span class="p">.</span><span class="n">fd</span><span class="p">.</span> <span class="n">uv_async_init</span><span class="p">(</span><span class="n">loop</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">wq_async</span><span class="p">,</span> <span class="n">uv__work_done</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">uv__async_start</span><span class="p">(</span><span class="n">loop</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">async_watcher</span><span class="p">,</span> <span class="n">uv__async_event</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">uv__async_eventfd</span><span class="p">().</span>
+<span class="mi">3</span><span class="p">.</span> <span class="n">open</span> <span class="n">a</span> <span class="n">eventpoll</span> <span class="n">in</span> <span class="n">Linux</span><span class="o">:</span> <span class="n">loop</span><span class="o">-&gt;</span><span class="n">backend_fd</span><span class="p">.</span> <span class="n">uv__platform_loop_init</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">uv__epoll_create1</span><span class="p">(</span><span class="n">UV__EPOLL_CLOEXEC</span><span class="p">).</span>
+</code></pre>
+</div>
+<p>Notes: If using GDB or Eclipse debugging, “ls -l /proc/pid/fd” to view the file descriptors that it opened, you will find it opened some other pipes. View Google forum: <a href="https://groups.google.com/forum/#!topic/libuv/18Qbm-bBDWw">Where are these pipes created?</a>.</p>
+
+<hr />
+
+<h1 id="afunixhttpman7orglinuxman-pagesman7unix7html"><a href="http://man7.org/linux/man-pages/man7/unix.7.html">AF_UNIX</a></h1>
+
+<p>NAME</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>   unix - sockets for local interprocess communication SYNOPSIS
+
+   #include &lt;sys/socket.h&gt;
+   #include &lt;sys/un.h&gt;
+
+   unix_socket = socket(AF_UNIX, type, 0);
+   error = socketpair(AF_UNIX, type, 0, int *sv); DESCRIPTION         top
+
+   The AF_UNIX (also known as AF_LOCAL) socket family is used to
+   communicate between processes on the same machine efficiently.
+   Traditionally, UNIX domain sockets can be either unnamed, or bound to
+   a filesystem pathname (marked as being of type socket).  Linux also
+   supports an abstract namespace which is independent of the
+   filesystem.
+
+   Valid socket types in the UNIX domain are: SOCK_STREAM, for a stream-
+   oriented socket; SOCK_DGRAM, for a datagram-oriented socket that
+   preserves message boundaries (as on most UNIX implementations, UNIX
+   domain datagram sockets are always reliable and don't reorder
+   datagrams); and (since Linux 2.6.4) SOCK_SEQPACKET, for a sequenced-
+   packet socket that is connection-oriented, preserves message
+   boundaries, and delivers messages in the order that they were sent.
+
+   UNIX domain sockets support passing file descriptors or process
+   credentials to other processes using ancillary data.
+</code></pre>
+</div>
+
+<p>Address format
+       A UNIX domain socket address is represented in the following
+       structure:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>       struct sockaddr_un {
+           sa_family_t sun_family;               /* AF_UNIX */
+           char        sun_path[108];            /* pathname */
+       };
+
+   The sun_family field always contains AF_UNIX.  On Linux sun_path is
+   108 bytes in size.
+</code></pre>
+</div>
+
+<hr />
+
+<h1 id="sending-file-descriptors-over-pipeshttpsgithubcomnikhilmuvbookblobmastersourceprocessesrstsending-file-descriptors-over-pipes"><a href="https://github.com/nikhilm/uvbook/blob/master/source/processes.rst#sending-file-descriptors-over-pipes">Sending file descriptors over pipes</a></h1>
+
+<ul>
+  <li>
+    <p>Write a file descriptor
+```c
+  struct msghdr msg;
+  struct cmsghdr <em>cmsg;
+  int fd_to_send = uv__handle_fd((uv_handle_t</em>) req-&gt;send_handle);
+  char scratch[64] = {0};</p>
+
+    <p>assert(fd_to_send &gt;= 0);</p>
+
+    <p>msg.msg_name = NULL;
+  msg.msg_namelen = 0;
+  msg.msg_iov = iov;
+  msg.msg_iovlen = iovcnt;
+  msg.msg_flags = 0;</p>
+
+    <p>msg.msg_control = (void*) scratch;
+  msg.msg_controllen = CMSG_SPACE(sizeof(fd_to_send));</p>
+
+    <p>cmsg = CMSG_FIRSTHDR(&amp;msg);
+  cmsg-&gt;cmsg_level = SOL_SOCKET;
+  cmsg-&gt;cmsg_type = SCM_RIGHTS;  /* Transfer file descriptors. */
+  cmsg-&gt;cmsg_len = CMSG_LEN(sizeof(fd_to_send));</p>
+
+    <p>/* silence aliasing warning <em>/
+  {
+    void</em> pv = CMSG_DATA(cmsg);
+    int* pi = pv;
+    *pi = fd_to_send;
+  }</p>
+
+    <p>do {
+    n = sendmsg(uv__stream_fd(stream), &amp;msg, 0);
+  }
+```</p>
+  </li>
+  <li>
+    <p>Recv a file descriptor
+```c
+  if (!is_ipc) {
+    do {
+      nread = read(uv__stream_fd(stream), buf.base, buf.len);
+    }
+    while (nread &lt; 0 &amp;&amp; errno == EINTR);
+  } else {
+    /* ipc uses recvmsg <em>/
+    msg.msg_flags = 0;
+    msg.msg_iov = (struct iovec</em>) &amp;buf;
+    msg.msg_iovlen = 1;
+    msg.msg_name = NULL;
+    msg.msg_namelen = 0;
+    /* Set up to receive a descriptor even if one isn’t in the message */
+    msg.msg_controllen = sizeof(cmsg_space);
+    msg.msg_control = cmsg_space;</p>
+
+    <div class="highlighter-rouge"><pre class="highlight"><code>do {
+  nread = uv__recvmsg(uv__stream_fd(stream), &amp;msg, 0);
+}
+while (nread &lt; 0 &amp;&amp; errno == EINTR);   }
+</code></pre>
+    </div>
+  </li>
+</ul>
+
+<p>ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
+  struct cmsghdr* cmsg;
+  ssize_t rc;
+  int* pfd;
+  int* end;
+#if defined(<strong>linux</strong>)
+  static int no_msg_cmsg_cloexec;
+  if (no_msg_cmsg_cloexec == 0) {
+    rc = recvmsg(fd, msg, flags | 0x40000000);  /* MSG_CMSG_CLOEXEC <em>/
+    if (rc != -1)
+      return rc;
+    if (errno != EINVAL)
+      return -errno;
+    rc = recvmsg(fd, msg, flags);
+    if (rc == -1)
+      return -errno;
+    no_msg_cmsg_cloexec = 1;
+  } else {
+    rc = recvmsg(fd, msg, flags);
+  }
+#else
+  rc = recvmsg(fd, msg, flags);
+#endif
+  if (rc == -1)
+    return -errno;
+  if (msg-&gt;msg_controllen == 0)
+    return rc;
+  for (cmsg = CMSG_FIRSTHDR(msg); cmsg != NULL; cmsg = CMSG_NXTHDR(msg, cmsg))
+    if (cmsg-&gt;cmsg_type == SCM_RIGHTS)
+      for (pfd = (int</em>) CMSG_DATA(cmsg),
+           end = (int<em>) ((char</em>) cmsg + cmsg-&gt;cmsg_len);
+           pfd &lt; end;
+           pfd += 1)
+        uv__cloexec(*pfd, 1);
+  return rc;
+}
+```
+<a href="http://blog.csdn.net/sparkliang/article/details/5486069">Notes</a>:</p>
+
+<ol>
+  <li>需要注意的是传递描述符并不是传递一个 int 型的描述符编号，而是在接收进程中创建一个新的描述符，并且在内核的文件表中，它与发送进程发送的描述符指向相同的项。</li>
+  <li>在进程之间可以传递任意类型的描述符，比如可以是 pipe ， open ， mkfifo 或 socket ， accept 等函数返回的描述符，而不限于套接字。</li>
+  <li>一个描述符在传递过程中（从调用 sendmsg 发送到调用 recvmsg 接收），内核会将其标记为“在飞行中”（ in flight ）。在这段时间内，即使发送方试图关闭该描述符，内核仍会为接收进程保持打开状态。发送描述符会使其引用计数加 1 。</li>
+  <li>描述符是通过辅助数据发送的（结构体 msghdr 的 msg_control 成员），在发送和接收描述符时，总是发送至少 1 个字节的数据，即使这个数据没有任何实际意义。否则当接收返回 0 时，接收方将不能区分这意味着“没有数据”（但辅助数据可能有套接字）还是“文件结束符”。</li>
+  <li>具体实现时， msghdr 的 msg_control 缓冲区必须与 cmghdr 结构对齐，可以看到后面代码的实现使用了一个 union 结构来保证这一点。</li>
+</ol>
+
+
+  </div>
+
+</article>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">从libuv说开来——libuv源码分析</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li>从libuv说开来——libuv源码分析</li>
+          <li><a href="mailto:xiaomaoln@gmail.com">xiaomaoln@gmail.com</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/paulran"><span class="icon icon--github"><svg viewBox="0 0 16 16"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">paulran</span></a>
+
+          </li>
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>协作共享
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>

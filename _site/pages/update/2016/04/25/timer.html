@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>timer</title>
+  <meta name="description" content="struct uv_timer_t">
+
+  <link rel="stylesheet" href="/libuv-source-analysis/css/main.css">
+  <link rel="canonical" href="http://paulran.github.io/libuv-source-analysis/pages/update/2016/04/25/timer.html">
+  <link rel="alternate" type="application/rss+xml" title="从libuv说开来——libuv源码分析" href="http://paulran.github.io/libuv-source-analysis/feed.xml">
+</head>
+
+
+  <body>
+
+    <header class="site-header">
+
+  <div class="wrapper">
+
+    <a class="site-title" href="/libuv-source-analysis/">从libuv说开来——libuv源码分析</a>
+
+    <nav class="site-nav">
+      <a href="#" class="menu-icon">
+        <svg viewBox="0 0 18 15">
+          <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+          <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+          <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+        </svg>
+      </a>
+
+      <div class="trigger">
+        
+          
+          <a class="page-link" href="/libuv-source-analysis/about/">About</a>
+          
+        
+          
+        
+          
+        
+      </div>
+    </nav>
+
+  </div>
+
+</header>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">timer</h1>
+    <p class="post-meta"><time datetime="2016-04-25T18:14:10+08:00" itemprop="datePublished">Apr 25, 2016</time></p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <h1 id="struct-uvtimert">struct uv_timer_t</h1>
+
+<p><img src="/libuv-source-analysis/jpg/uv_timer_t.jpg" alt="" /></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_timer_init</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span><span class="p">,</span> <span class="n">uv_timer_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_timer_start</span><span class="p">(</span><span class="n">uv_timer_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span>
+                             <span class="n">uv_timer_cb</span> <span class="n">cb</span><span class="p">,</span>
+                             <span class="kt">uint64_t</span> <span class="n">timeout</span><span class="p">,</span>
+                             <span class="kt">uint64_t</span> <span class="n">repeat</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_timer_stop</span><span class="p">(</span><span class="n">uv_timer_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">int</span> <span class="n">uv_timer_again</span><span class="p">(</span><span class="n">uv_timer_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">void</span> <span class="n">uv_timer_set_repeat</span><span class="p">(</span><span class="n">uv_timer_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">,</span> <span class="kt">uint64_t</span> <span class="n">repeat</span><span class="p">);</span>
+<span class="n">UV_EXTERN</span> <span class="kt">uint64_t</span> <span class="n">uv_timer_get_repeat</span><span class="p">(</span><span class="k">const</span> <span class="n">uv_timer_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">);</span>
+</code></pre>
+</div>
+
+<p>Notes: uv_timer_t is a subclass of <a href="https://github.com/paulran/libuv-source-analysis/wiki/tcp-io#struct-uv_handle_t">uv_handle_t</a>.</p>
+
+<h1 id="run-timers">Run timers</h1>
+
+<p>Reference to <a href="https://github.com/paulran/libuv-source-analysis/wiki/tcp-io#struct-uv_loop_t">struct uv_loop_t</a>::timer_heap.</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">uv__run_timers</span><span class="p">(</span><span class="n">uv_loop_t</span><span class="o">*</span> <span class="n">loop</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">struct</span> <span class="n">heap_node</span><span class="o">*</span> <span class="n">heap_node</span><span class="p">;</span>
+  <span class="n">uv_timer_t</span><span class="o">*</span> <span class="n">handle</span><span class="p">;</span>
+
+  <span class="k">for</span> <span class="p">(;;)</span> <span class="p">{</span>
+    <span class="n">heap_node</span> <span class="o">=</span> <span class="n">heap_min</span><span class="p">((</span><span class="k">struct</span> <span class="n">heap</span><span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">loop</span><span class="o">-&gt;</span><span class="n">timer_heap</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">heap_node</span> <span class="o">==</span> <span class="nb">NULL</span><span class="p">)</span>
+      <span class="k">break</span><span class="p">;</span>
+
+    <span class="n">handle</span> <span class="o">=</span> <span class="n">container_of</span><span class="p">(</span><span class="n">heap_node</span><span class="p">,</span> <span class="n">uv_timer_t</span><span class="p">,</span> <span class="n">heap_node</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">handle</span><span class="o">-&gt;</span><span class="n">timeout</span> <span class="o">&gt;</span> <span class="n">loop</span><span class="o">-&gt;</span><span class="n">time</span><span class="p">)</span>
+      <span class="k">break</span><span class="p">;</span>
+
+    <span class="n">uv_timer_stop</span><span class="p">(</span><span class="n">handle</span><span class="p">);</span>
+    <span class="n">uv_timer_again</span><span class="p">(</span><span class="n">handle</span><span class="p">);</span>
+    <span class="n">handle</span><span class="o">-&gt;</span><span class="n">timer_cb</span><span class="p">(</span><span class="n">handle</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span> 
+</code></pre>
+</div>
+<p>Notes:</p>
+
+<ul>
+  <li>loop-&gt;timer_heap is the root of a binary min heap - <a href="https://github.com/libuv/libuv/blob/v1.x/src/heap-inl.h#L40">struct heap</a>*. The usual properties hold: the root is the lowest
+element in the set, the height of the tree is at most log2(nodes) and
+it’s always a complete binary tree.</li>
+</ul>
+
+<h1 id="loop-time">loop-&gt;time</h1>
+
+<p>Reference to <a href="https://github.com/paulran/libuv-source-analysis/wiki/tcp-io#struct-uv_loop_t">struct uv_loop_t</a>::time.
+```c
+UV_UNUSED(static void uv__update_time(uv_loop_t* loop)) {
+  /* Use a fast time source if available.  We only need millisecond precision.
+   */
+  loop-&gt;time = uv__hrtime(UV_CLOCK_FAST) / 1000000;
+}</p>
+
+<p>uint64_t uv_now(const uv_loop_t* loop) {
+  return loop-&gt;time;
+}</p>
+
+<p>/* Get the next timeout from heap timer_heap. <em>/
+int uv__next_timeout(const uv_loop_t</em> loop) {
+  const struct heap_node* heap_node;
+  const uv_timer_t* handle;
+  uint64_t diff;</p>
+
+<p>heap_node = heap_min((const struct heap<em>) &amp;loop-&gt;timer_heap);
+  if (heap_node == NULL)
+    return -1; /</em> block indefinitely */</p>
+
+<p>handle = container_of(heap_node, const uv_timer_t, heap_node);
+  if (handle-&gt;timeout &lt;= loop-&gt;time)
+    return 0;</p>
+
+<p>diff = handle-&gt;timeout - loop-&gt;time;
+  if (diff &gt; INT_MAX)
+    diff = INT_MAX;</p>
+
+<p>return diff;
+}</p>
+
+<p>/* Allow timeout milliseconds to run in this function. Timeout, it should be returned. <em>/
+void uv__io_poll(uv_loop_t</em> loop, int timeout); /* in milliseconds or -1 */
+ ```</p>
+
+
+  </div>
+
+</article>
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">从libuv说开来——libuv源码分析</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li>从libuv说开来——libuv源码分析</li>
+          <li><a href="mailto:xiaomaoln@gmail.com">xiaomaoln@gmail.com</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/paulran"><span class="icon icon--github"><svg viewBox="0 0 16 16"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">paulran</span></a>
+
+          </li>
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>协作共享
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
