@@ -2,7 +2,7 @@
 layout: post
 title:  "简介"
 date:   2016-04-25 18:14:10 +0800
-categories: paulran update
+categories: libuv-source-analysis update
 ---
 The project objectives:  
 项目目标：  

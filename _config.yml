@@ -10,7 +10,7 @@ title: 从libuv说开来——libuv源码分析
 email: xiaomaoln@gmail.com
 description: > # this means to ignore newlines until "baseurl:"
   协助共享
-baseurl: "" # the subpath of your site, e.g. /blog
+baseurl: "/_site" # the subpath of your site, e.g. /blog
 url: "http://paulran.github.io/libuv-source-analysis" # the base hostname & protocol for your site
 github_username:  paulran
 
