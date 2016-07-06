@@ -8,7 +8,7 @@ categories: pages update
 
 ![]({{ "/jpg/uv_pipe_t.jpg" | prepend: site.baseurl }})
 
-Notes: uv_pipe_t is a subclass of [uv_handle_t](https://github.com/paulran/libuv-source-analysis/wiki/tcp-io#struct-uv_handle_t).
+Notes: uv_pipe_t is a subclass of [uv_handle_t]({{ site.baseurl }}{% post_url 2016-04-25-tcp-io %}#struct-uvhandlet).
 
 ## pipe socket and sockaddr
 
@@ -46,7 +46,8 @@ addr.sin_addr.s_addr = inet_addr(ip);
 
 
 ---------------------------------------
-# To create a [struct uv_loop_t](https://github.com/paulran/libuv-source-analysis/wiki/tcp-io#struct-uv_loop_t) open file descriptor
+
+# To create a [struct uv_loop_t]({{ site.baseurl }}{% post_url 2016-04-25-tcp-io %}#struct-uvloopt) open file descriptor
 
 ```c
 1. open two pipes: 
@@ -108,6 +109,7 @@ DESCRIPTION         top
 # [Sending file descriptors over pipes](https://github.com/nikhilm/uvbook/blob/master/source/processes.rst#sending-file-descriptors-over-pipes)
 
 * Write a file descriptor
+
 ```c
     struct msghdr msg;
     struct cmsghdr *cmsg;
@@ -142,6 +144,7 @@ DESCRIPTION         top
     }
 ```
 * Recv a file descriptor
+
 ```c
     if (!is_ipc) {
       do {
@@ -202,6 +205,7 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
   return rc;
 }
 ```
+
 [Notes](http://blog.csdn.net/sparkliang/article/details/5486069):
 
 1. 需要注意的是传递描述符并不是传递一个 int 型的描述符编号，而是在接收进程中创建一个新的描述符，并且在内核的文件表中，它与发送进程发送的描述符指向相同的项。
