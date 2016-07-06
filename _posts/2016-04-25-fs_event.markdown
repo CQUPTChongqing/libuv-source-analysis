@@ -1,0 +1,110 @@
+---
+layout: post
+title:  "fs_event"
+date:   2016-04-25 18:14:10 +0800
+categories: pages update
+---
+
+# Interface
+
+```c
+/*
+ * Flags to be passed to uv_fs_event_start().
+ */
+enum uv_fs_event_flags {
+  /*
+   * By default, if the fs event watcher is given a directory name, we will
+   * watch for all events in that directory. This flags overrides this behavior
+   * and makes fs_event report only changes to the directory entry itself. This
+   * flag does not affect individual files watched.
+   * This flag is currently not implemented yet on any backend.
+   */
+  UV_FS_EVENT_WATCH_ENTRY = 1,
+
+  /*
+   * By default uv_fs_event will try to use a kernel interface such as inotify
+   * or kqueue to detect events. This may not work on remote filesystems such
+   * as NFS mounts. This flag makes fs_event fall back to calling stat() on a
+   * regular interval.
+   * This flag is currently not implemented yet on any backend.
+   */
+  UV_FS_EVENT_STAT = 2,
+
+  /*
+   * By default, event watcher, when watching directory, is not registering
+   * (is ignoring) changes in it's subdirectories.
+   * This flag will override this behaviour on platforms that support it.
+   */
+  UV_FS_EVENT_RECURSIVE = 4
+};
+
+
+UV_EXTERN int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle);
+UV_EXTERN int uv_fs_event_start(uv_fs_event_t* handle,
+                                uv_fs_event_cb cb,
+                                const char* path,
+                                unsigned int flags);
+UV_EXTERN int uv_fs_event_stop(uv_fs_event_t* handle);
+UV_EXTERN int uv_fs_event_getpath(uv_fs_event_t* handle,
+                                  char* buffer,
+                                  size_t* size);
+```
+
+# struct uv_fs_event_t
+
+```c
+struct uv_fs_event_s {
+  /* public */
+  void* data;
+  /* read-only */
+  uv_loop_t* loop;
+  uv_handle_type type;
+  /* private */
+  uv_close_cb close_cb;
+  void* handle_queue[2];
+  union {
+    int fd;
+    void* reserved[4];
+  } u;
+
+  uv_handle_t* next_closing;
+  unsigned int flags;
+
+  /* private */
+  char* path;
+
+  uv_fs_event_cb cb;
+
+  void* watchers[2];
+  int wd;
+};
+```
+
+# struct uv_loop_t associated with fs_event
+
+```c
+struct uv_loop_s {
+  ... ...
+  uv__io_t inotify_read_watcher;
+  void* inotify_watchers;
+  int inotify_fd;
+};
+```
+
+
+***
+
+# [inotify](http://linux.die.net/man/7/inotify)
+
+Name
+
+inotify - monitoring file system events
+
+Description
+
+The inotify API provides a mechanism for monitoring file system events. Inotify can be used to monitor individual files, or to monitor directories. When a directory is monitored, inotify will return events for the directory itself, and for files inside the directory.
+
+The following system calls are used with this API: inotify_init(2) (or inotify_init1(2)), inotify_add_watch(2), inotify_rm_watch(2), read(2), and close(2).
+
+
+

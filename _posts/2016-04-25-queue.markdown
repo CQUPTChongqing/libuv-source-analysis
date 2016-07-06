@@ -1,0 +1,146 @@
+---
+layout: post
+title:  "queue"
+date:   2016-04-25 18:14:10 +0800
+categories: pages update
+---
+
+
+queue.h
+
+```c
+ /* Copyright (c) 2013, Ben Noordhuis <info@bnoordhuis.nl>
+  *
+  * Permission to use, copy, modify, and/or distribute this software for any
+  * purpose with or without fee is hereby granted, provided that the above
+  * copyright notice and this permission notice appear in all copies.
+  *
+  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+  * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+  * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+  * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  */
+ 
+ #ifndef QUEUE_H_
+ #define QUEUE_H_
+ 
+ #include <stddef.h>
+ 
+ /* 这是一个双向队列，队列的每个节点只有两个指针，
+  * 一个指向它的 prev 节点，一个指向它的 next 节点。 */
+ typedef void *QUEUE[2];
+ 
+ /* Private macros. */
+ #define QUEUE_NEXT(q)       (*(QUEUE **) &((*(q))[0]))
+ #define QUEUE_PREV(q)       (*(QUEUE **) &((*(q))[1]))
+ #define QUEUE_PREV_NEXT(q)  (QUEUE_NEXT(QUEUE_PREV(q)))
+ #define QUEUE_NEXT_PREV(q)  (QUEUE_PREV(QUEUE_NEXT(q)))
+ 
+ /* Public macros. */
+ #define QUEUE_DATA(ptr, type, field)                                          \
+   ((type *) ((char *) (ptr) - offsetof(type, field)))
+ 
+ /* Important note: mutating the list while QUEUE_FOREACH is
+  * iterating over its elements results in undefined behavior.
+  */
+ #define QUEUE_FOREACH(q, h)                                                   \
+   for ((q) = QUEUE_NEXT(h); (q) != (h); (q) = QUEUE_NEXT(q))
+ 
+ #define QUEUE_EMPTY(q)                                                        \
+   ((const QUEUE *) (q) == (const QUEUE *) QUEUE_NEXT(q))
+ 
+ #define QUEUE_HEAD(q)                                                         \
+   (QUEUE_NEXT(q))
+ 
+ /* 这是一个头尾相交的双向队列。 */
+ #define QUEUE_INIT(q)                                                         \
+   do {                                                                        \
+     QUEUE_NEXT(q) = (q);                                                      \
+     QUEUE_PREV(q) = (q);                                                      \
+   }                                                                           \
+   while (0)
+ 
+ /* 把队列 h 的节点都添加到队列 n 上，要求队列 h 和 n 
+  * 最少都调用 QUEUE_INIT 初始化了。
+  * 有bug：假设 h 上有节点，
+  *   1）当 n 只经过初始化时，QUEUE_ADD(h, n) 
+  *      不能将 h 的节点加入到 n 上，n 依然为 empty；
+  *   2）当 n 上有节点，QUEUE_ADD(h, n) 后 
+  *      QUEUE_FOREACH(q, n) 打印节点会死循环。
+  */
+ #define QUEUE_ADD(h, n)                                                       \
+   do {                                                                        \
+     QUEUE_PREV_NEXT(h) = QUEUE_NEXT(n);                                       \
+     QUEUE_NEXT_PREV(n) = QUEUE_PREV(h);                                       \
+     QUEUE_PREV(h) = QUEUE_PREV(n);                                            \
+     QUEUE_PREV_NEXT(h) = (h);                                                 \
+   }                                                                           \
+   while (0)
+ 
+ #define QUEUE_SPLIT(h, q, n)                                                  \
+   do {                                                                        \
+     QUEUE_PREV(n) = QUEUE_PREV(h);                                            \
+     QUEUE_PREV_NEXT(n) = (n);                                                 \
+     QUEUE_NEXT(n) = (q);                                                      \
+     QUEUE_PREV(h) = QUEUE_PREV(q);                                            \
+     QUEUE_PREV_NEXT(h) = (h);                                                 \
+     QUEUE_PREV(q) = (n);                                                      \
+   }                                                                           \
+   while (0)
+ 
+ /* 把队列 h 的节点都移动到队列 n 上，n 上原来的节点会被放弃，
+  * 要求队列 h 和 n 最少都调用 QUEUE_INIT 初始化了。 */
+ #define QUEUE_MOVE(h, n)                                                      \
+   do {                                                                        \
+     if (QUEUE_EMPTY(h))                                                       \
+       QUEUE_INIT(n);                                                          \
+     else {                                                                    \
+       QUEUE* q = QUEUE_HEAD(h);                                               \
+       QUEUE_SPLIT(h, q, n);                                                   \
+     }                                                                         \
+   }                                                                           \
+   while (0)
+ 
+ #define QUEUE_INSERT_HEAD(h, q)                                               \
+   do {                                                                        \
+     QUEUE_NEXT(q) = QUEUE_NEXT(h);                                            \
+     QUEUE_PREV(q) = (h);                                                      \
+     QUEUE_NEXT_PREV(q) = (q);                                                 \
+     QUEUE_NEXT(h) = (q);                                                      \
+   }                                                                           \
+   while (0)
+ 
+ #define QUEUE_INSERT_TAIL(h, q)                                               \
+   do {                                                                        \
+     QUEUE_NEXT(q) = (h);                                                      \
+     QUEUE_PREV(q) = QUEUE_PREV(h);                                            \
+     QUEUE_PREV_NEXT(q) = (q);                                                 \
+     QUEUE_PREV(h) = (q);                                                      \
+   }                                                                           \
+   while (0)
+ 
+ /* 把 q 从它所在的队列移除
+ #define QUEUE_REMOVE(q)                                                       \
+   do {                                                                        \
+     QUEUE_PREV_NEXT(q) = QUEUE_NEXT(q);                                       \
+     QUEUE_NEXT_PREV(q) = QUEUE_PREV(q);                                       \
+   }                                                                           \
+   while (0)
+ 
+ #endif /* QUEUE_H_ */
+ 
+```
+
+
+
+example:  
+
+* wq_test.c: [https://github.com/libuv/libuv/issues/754](https://github.com/libuv/libuv/issues/754)  (maybe QUEUE_ADD(h, n) is to add n to h.), [https://groups.google.com/forum/#!topic/libuv/fqcXBiTi3v8](https://groups.google.com/forum/#!topic/libuv/fqcXBiTi3v8)
+
+
+
+
+

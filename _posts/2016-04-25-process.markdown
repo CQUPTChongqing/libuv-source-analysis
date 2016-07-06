@@ -1,0 +1,290 @@
+---
+layout: post
+title:  "process"
+date:   2016-04-25 18:14:10 +0800
+categories: pages update
+---
+
+# Interface
+
+```c
+UV_EXTERN int uv_spawn(uv_loop_t* loop,
+                       uv_process_t* handle,
+                       const uv_process_options_t* options);
+UV_EXTERN int uv_process_kill(uv_process_t*, int signum);
+UV_EXTERN int uv_kill(int pid, int signum);
+```
+
+# struct uv_process_t
+
+![]({{ "/jpg/uv_process_t.jpg" | prepend: site.baseurl }})
+
+
+# struct uv_process_options_t
+
+```c
+typedef struct uv_process_options_s {
+  uv_exit_cb exit_cb; /* Called after the process exits. */
+  const char* file;   /* Path to program to execute. */
+  /*
+   * Command line arguments. args[0] should be the path to the program. On
+   * Windows this uses CreateProcess which concatenates the arguments into a
+   * string this can cause some strange errors. See the note at
+   * windows_verbatim_arguments.
+   */
+  char** args;
+  /*
+   * This will be set as the environ variable in the subprocess. If this is
+   * NULL then the parents environ will be used.
+   */
+  char** env;
+  /*
+   * If non-null this represents a directory the subprocess should execute
+   * in. Stands for current working directory.
+   */
+  const char* cwd;
+  /*
+   * Various flags that control how uv_spawn() behaves. See the definition of
+   * `enum uv_process_flags` below.
+   */
+  unsigned int flags;
+  /*
+   * The `stdio` field points to an array of uv_stdio_container_t structs that
+   * describe the file descriptors that will be made available to the child
+   * process. The convention is that stdio[0] points to stdin, fd 1 is used for
+   * stdout, and fd 2 is stderr.
+   *
+   * Note that on windows file descriptors greater than 2 are available to the
+   * child process only if the child processes uses the MSVCRT runtime.
+   */
+  int stdio_count;
+  uv_stdio_container_t* stdio;
+  /*
+   * Libuv can change the child process' user/group id. This happens only when
+   * the appropriate bits are set in the flags fields. This is not supported on
+   * windows; uv_spawn() will fail and set the error to UV_ENOTSUP.
+   */
+  uv_uid_t uid;
+  uv_gid_t gid;
+} uv_process_options_t;
+```
+
+Notes：
+
+1. 子进程最后调用 execvp(options->file, options->args) 执行一个可执行程序，所以 options->file 必须设置。
+
+# struct uv_loop_t associated with process
+
+```c
+struct uv_loop_s {
+  ... ...
+  /* Acquire write lock before fork(),  and after fork() release the lock in parent process. */
+  uv_rwlock_t cloexec_lock; // uv_rwlock_wrlock(&loop->cloexec_lock) and uv_rwlock_wrunlock(&loop->cloexec_lock).
+  ... ...
+  void* process_handles[2];  // <= uv_process_t::queue
+  ... ...
+  uv_signal_t child_watcher; // child process watcher, uv_signal_start(&loop->child_watcher, uv__chld, SIGCHLD);
+  ... ...
+};
+```
+
+# callback uv__chld
+
+```c
+static void uv__chld(uv_signal_t* handle, int signum) {
+  uv_process_t* process;
+  uv_loop_t* loop;
+  int exit_status;
+  int term_signal;
+  int status;
+  pid_t pid;
+  QUEUE pending;
+  QUEUE* q;
+  QUEUE* h;
+
+  assert(signum == SIGCHLD);
+
+  QUEUE_INIT(&pending);
+  loop = handle->loop;
+
+  h = &loop->process_handles;
+  q = QUEUE_HEAD(h);
+  while (q != h) { // traversal QUEUE loop->process_handles.
+    process = QUEUE_DATA(q, uv_process_t, queue);
+    q = QUEUE_NEXT(q);
+
+    do
+      pid = waitpid(process->pid, &status, WNOHANG);
+    while (pid == -1 && errno == EINTR);
+
+    if (pid == 0)
+      continue;
+
+    if (pid == -1) {
+      if (errno != ECHILD)
+        abort();
+      continue;
+    }
+
+    process->status = status;
+    QUEUE_REMOVE(&process->queue);
+    QUEUE_INSERT_TAIL(&pending, &process->queue); // QUEUE pending: all exited processes.
+  }
+
+  h = &pending;
+  q = QUEUE_HEAD(h);
+  while (q != h) { // traversal QUEUE pending.
+    process = QUEUE_DATA(q, uv_process_t, queue);
+    q = QUEUE_NEXT(q);
+
+    QUEUE_REMOVE(&process->queue);
+    QUEUE_INIT(&process->queue);
+    uv__handle_stop(process);
+
+    if (process->exit_cb == NULL)
+      continue;
+
+    exit_status = 0;
+    if (WIFEXITED(process->status))
+      exit_status = WEXITSTATUS(process->status);
+
+    term_signal = 0;
+    if (WIFSIGNALED(process->status))
+      term_signal = WTERMSIG(process->status);
+
+    process->exit_cb(process, exit_status, term_signal);
+  }
+  assert(QUEUE_EMPTY(&pending));
+}
+```
+
+# Test 1: [spawn_and_ping](https://github.com/libuv/libuv/blob/v1.x/test/test-spawn.c#L786)
+
+```c
+TEST_IMPL(spawn_and_ping) {
+  uv_write_t write_req;
+  uv_pipe_t in, out;
+  uv_buf_t buf;
+  uv_stdio_container_t stdio[2];
+  int r;
+
+  init_process_options("spawn_helper3", exit_cb);
+  buf = uv_buf_init("TEST", 4);
+
+  uv_pipe_init(uv_default_loop(), &out, 0);
+  uv_pipe_init(uv_default_loop(), &in, 0);
+  options.stdio = stdio;
+  options.stdio[0].flags = UV_CREATE_PIPE | UV_READABLE_PIPE;
+  options.stdio[0].data.stream = (uv_stream_t*)&in;
+  options.stdio[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  options.stdio[1].data.stream = (uv_stream_t*)&out;
+  options.stdio_count = 2;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT(r == 0);
+
+  /* Sending signum == 0 should check if the
+   * child process is still alive, not kill it.
+   */
+  r = uv_process_kill(&process, 0);
+  ASSERT(r == 0);
+
+  r = uv_write(&write_req, (uv_stream_t*)&in, &buf, 1, write_cb);
+  ASSERT(r == 0);
+
+  r = uv_read_start((uv_stream_t*)&out, on_alloc, on_read);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 0);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(strcmp(output, "TEST") == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+```
+
+# Test 2: [spawn_inherit_streams](https://github.com/libuv/libuv/blob/v1.x/test/test-spawn.c#L1579)
+
+```c
+TEST_IMPL(spawn_inherit_streams) {
+  uv_process_t child_req;
+  uv_stdio_container_t child_stdio[2];
+  int fds_stdin[2];
+  int fds_stdout[2];
+  uv_pipe_t pipe_stdin_child;
+  uv_pipe_t pipe_stdout_child;
+  uv_pipe_t pipe_stdin_parent;
+  uv_pipe_t pipe_stdout_parent;
+  unsigned char ubuf[OUTPUT_SIZE - 1];
+  uv_buf_t buf;
+  unsigned int i;
+  int r;
+  uv_write_t write_req;
+  uv_loop_t* loop;
+
+  init_process_options("spawn_helper9", exit_cb);
+
+  loop = uv_default_loop();
+  ASSERT(uv_pipe_init(loop, &pipe_stdin_child, 0) == 0);
+  ASSERT(uv_pipe_init(loop, &pipe_stdout_child, 0) == 0);
+  ASSERT(uv_pipe_init(loop, &pipe_stdin_parent, 0) == 0);
+  ASSERT(uv_pipe_init(loop, &pipe_stdout_parent, 0) == 0);
+
+  ASSERT(mpipe(fds_stdin) != -1);
+  ASSERT(mpipe(fds_stdout) != -1);
+
+  ASSERT(uv_pipe_open(&pipe_stdin_child, fds_stdin[0]) == 0);
+  ASSERT(uv_pipe_open(&pipe_stdout_child, fds_stdout[1]) == 0);
+  ASSERT(uv_pipe_open(&pipe_stdin_parent, fds_stdin[1]) == 0);
+  ASSERT(uv_pipe_open(&pipe_stdout_parent, fds_stdout[0]) == 0);
+
+  child_stdio[0].flags = UV_INHERIT_STREAM;
+  child_stdio[0].data.stream = (uv_stream_t *)&pipe_stdin_child;
+
+  child_stdio[1].flags = UV_INHERIT_STREAM;
+  child_stdio[1].data.stream = (uv_stream_t *)&pipe_stdout_child;
+
+  options.stdio = child_stdio;
+  options.stdio_count = 2;
+
+  ASSERT(uv_spawn(loop, &child_req, &options) == 0);
+
+  uv_close((uv_handle_t*)&pipe_stdin_child, NULL);
+  uv_close((uv_handle_t*)&pipe_stdout_child, NULL);
+
+  buf = uv_buf_init((char*)ubuf, sizeof ubuf);
+  for (i = 0; i < sizeof ubuf; ++i)
+    ubuf[i] = i & 255u;
+  memset(output, 0, sizeof ubuf);
+
+  r = uv_write(&write_req,
+               (uv_stream_t*)&pipe_stdin_parent,
+               &buf,
+               1,
+               write_cb);
+  ASSERT(r == 0);
+
+  r = uv_read_start((uv_stream_t*)&pipe_stdout_parent, on_alloc, on_read);
+  ASSERT(r == 0);
+
+  r = uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT(r == 0);
+
+  ASSERT(exit_cb_called == 1);
+  ASSERT(close_cb_called == 3);
+
+  r = memcmp(ubuf, output, sizeof ubuf);
+  ASSERT(r == 0);
+
+  MAKE_VALGRIND_HAPPY();
+  return 0;
+}
+```
+
+
+

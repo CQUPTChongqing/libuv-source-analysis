@@ -1,0 +1,206 @@
+---
+layout: post
+title:  "thread"
+date:   2016-04-25 18:14:10 +0800
+categories: pages update
+---
+
+## mutex
+
+```c
+UV_EXTERN int uv_mutex_init(uv_mutex_t* handle);
+UV_EXTERN void uv_mutex_destroy(uv_mutex_t* handle);
+UV_EXTERN void uv_mutex_lock(uv_mutex_t* handle);
+UV_EXTERN int uv_mutex_trylock(uv_mutex_t* handle);
+UV_EXTERN void uv_mutex_unlock(uv_mutex_t* handle);
+```
+
+## rwlock
+
+```c
+UV_EXTERN int uv_rwlock_init(uv_rwlock_t* rwlock);
+UV_EXTERN void uv_rwlock_destroy(uv_rwlock_t* rwlock);
+UV_EXTERN void uv_rwlock_rdlock(uv_rwlock_t* rwlock);
+UV_EXTERN int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock);
+UV_EXTERN void uv_rwlock_rdunlock(uv_rwlock_t* rwlock);
+UV_EXTERN void uv_rwlock_wrlock(uv_rwlock_t* rwlock);
+UV_EXTERN int uv_rwlock_trywrlock(uv_rwlock_t* rwlock);
+UV_EXTERN void uv_rwlock_wrunlock(uv_rwlock_t* rwlock);
+```
+
+## semaphore
+
+```c
+UV_EXTERN int uv_sem_init(uv_sem_t* sem, unsigned int value);
+UV_EXTERN void uv_sem_destroy(uv_sem_t* sem);
+UV_EXTERN void uv_sem_post(uv_sem_t* sem);
+
+/* sem_wait() decrements (locks) the semaphore pointed to by sem.  If
+ * the semaphore's value is greater than zero, then the decrement
+ *  proceeds, and the function returns, immediately.  If the semaphore
+ * currently has the value zero, then the call blocks until either it
+ * becomes possible to perform the decrement (i.e., the semaphore value
+ * rises above zero), or a signal handler interrupts the call.
+ * Difference from uv_cond_wait(): do not need a mutex. 
+ */
+UV_EXTERN void uv_sem_wait(uv_sem_t* sem);
+UV_EXTERN int uv_sem_trywait(uv_sem_t* sem);
+```
+
+## condition variable
+
+```c
+UV_EXTERN int uv_cond_init(uv_cond_t* cond);
+UV_EXTERN void uv_cond_destroy(uv_cond_t* cond);
+UV_EXTERN void uv_cond_signal(uv_cond_t* cond);
+UV_EXTERN void uv_cond_broadcast(uv_cond_t* cond);
+
+/* These functions atomically release mutex and cause 
+ * the calling thread to block on the condition variable cond.
+ * The mutex passed to pthread_cond_wait protects the condition.
+ * The caller passes it locked to the function, which then atomically 
+ * places them calling thread on the list of threads waiting for the 
+ * condition and unlocks the mutex. This closes the window between 
+ * the time that the condition is checked and the time that the thread 
+ * goes to sleep waiting for the condition to change, so that the thread 
+ * doesn't miss a change in the condition. When pthread_cond_wait returns, 
+ * the mutex is again locked. 
+ */
+UV_EXTERN void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex);
+UV_EXTERN int uv_cond_timedwait(uv_cond_t* cond,
+                                uv_mutex_t* mutex,
+                                uint64_t timeout);
+```
+
+## atomic ops
+
+```c
+#define ACCESS_ONCE(type, var)                                                \
+  (*(volatile type*) &(var))
+
+
+/* Compare oldval with (*ptr). If equal, newval is 
+ * loaded into (*ptr). Else, load (*ptr) into oldval.
+ * 比较oldval和(*ptr)的值，如果相同，newval的值被写到(*ptr)；
+ * 否则，把(*ptr)的值写回oldval。
+ * Return: (*ptr)
+ */
+UV_UNUSED(static int cmpxchgi(int* ptr, int oldval, int newval)) {
+#if defined(__i386__) || defined(__x86_64__)
+  int out;
+  __asm__ __volatile__ ("lock; cmpxchg %2, %1;"
+                        : "=a" (out), "+m" (*(volatile int*) ptr)
+                        : "r" (newval), "0" (oldval)
+                        : "memory");
+  return out;
+#elif defined(_AIX) && defined(__xlC__)
+  const int out = (*(volatile int*) ptr);
+  __compare_and_swap(ptr, &oldval, newval);
+  return out;
+#else
+  return __sync_val_compare_and_swap(ptr, oldval, newval);
+#endif
+}
+
+UV_UNUSED(static long cmpxchgl(long* ptr, long oldval, long newval)) {
+#if defined(__i386__) || defined(__x86_64__)
+  long out;
+  __asm__ __volatile__ ("lock; cmpxchg %2, %1;"
+                        : "=a" (out), "+m" (*(volatile long*) ptr)
+                        : "r" (newval), "0" (oldval)
+                        : "memory");
+  return out;
+#elif defined(_AIX) && defined(__xlC__)
+  const long out = (*(volatile int*) ptr);
+# if defined(__64BIT__)
+  __compare_and_swaplp(ptr, &oldval, newval);
+# else
+  __compare_and_swap(ptr, &oldval, newval);
+# endif /* if defined(__64BIT__) */
+  return out;
+#else
+  return __sync_val_compare_and_swap(ptr, oldval, newval);
+#endif
+}
+
+UV_UNUSED(static void cpu_relax(void)) {
+#if defined(__i386__) || defined(__x86_64__)
+  __asm__ __volatile__ ("rep; nop");  /* a.k.a. PAUSE */
+#endif
+}
+```
+
+## spinlock
+
+```c
+typedef struct {
+  int lock;
+} uv_spinlock_t;
+
+UV_UNUSED(static void uv_spinlock_init(uv_spinlock_t* spinlock));
+UV_UNUSED(static void uv_spinlock_lock(uv_spinlock_t* spinlock));
+UV_UNUSED(static void uv_spinlock_unlock(uv_spinlock_t* spinlock));
+UV_UNUSED(static int uv_spinlock_trylock(uv_spinlock_t* spinlock));
+
+UV_UNUSED(static void uv_spinlock_init(uv_spinlock_t* spinlock)) {
+  ACCESS_ONCE(int, spinlock->lock) = 0;
+}
+
+UV_UNUSED(static void uv_spinlock_lock(uv_spinlock_t* spinlock)) {
+  while (!uv_spinlock_trylock(spinlock)) cpu_relax();
+}
+
+UV_UNUSED(static void uv_spinlock_unlock(uv_spinlock_t* spinlock)) {
+  ACCESS_ONCE(int, spinlock->lock) = 0;
+}
+
+UV_UNUSED(static int uv_spinlock_trylock(uv_spinlock_t* spinlock)) {
+  /* TODO(bnoordhuis) Maybe change to a ticket lock to guarantee fair queueing.
+   * Not really critical until we have locks that are (frequently) contended
+   * for by several threads.
+   */
+  return 0 == cmpxchgi(&spinlock->lock, 0, 1);
+}
+```
+
+
+## barrier
+
+```c
+UV_EXTERN int uv_barrier_init(uv_barrier_t* barrier, unsigned int count);
+UV_EXTERN void uv_barrier_destroy(uv_barrier_t* barrier);
+
+/* The calling thread shall block until the required 
+ * number of threads have called pthread_barrier_wait() 
+ * specifying the barrier. 
+ */
+UV_EXTERN int uv_barrier_wait(uv_barrier_t* barrier);
+```
+
+## thread-specific data
+
+```c
+UV_EXTERN int uv_key_create(uv_key_t* key);
+UV_EXTERN void uv_key_delete(uv_key_t* key);
+UV_EXTERN void* uv_key_get(uv_key_t* key);
+UV_EXTERN void uv_key_set(uv_key_t* key, void* value);
+```
+
+## thread
+
+```c
+typedef void (*uv_thread_cb)(void* arg);
+UV_EXTERN int uv_thread_create(uv_thread_t* tid, uv_thread_cb entry, void* arg);
+UV_EXTERN uv_thread_t uv_thread_self(void);
+UV_EXTERN int uv_thread_join(uv_thread_t *tid);
+UV_EXTERN int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2);
+
+/* On return from uv_once(), it is guaranteed that callback() has completed.*/
+UV_EXTERN void uv_once(uv_once_t* guard, void (*callback)(void));
+```
+
+Examples: libuv/v1.x/src/threadpool.c function [worker](https://github.com/libuv/libuv/blob/v1.x/src/threadpool.c#L64) and [post](https://github.com/libuv/libuv/blob/v1.x/src/threadpool.c#L107).
+
+
+
+

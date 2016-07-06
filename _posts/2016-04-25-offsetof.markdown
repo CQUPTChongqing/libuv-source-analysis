@@ -1,0 +1,104 @@
+---
+layout: post
+title:  "offsetof"
+date:   2016-04-25 18:14:10 +0800
+categories: pages update
+---
+
+offsetof(s,m)
+
+offsetof 求某个结构体的特定成员在结构体里面的偏移量。
+ 
+(s *)0 是骗编译器说有一个指向类（或结构）s的指针，其值为0。
+
+&((s *)0)->m 是要取得类s中成员变量m的地址。
+
+由于这个类（或结构）的基址为0，这时m的地址当然就是m在s中的偏移了。
+
+(s *)0 是把0地址转换为s指针类型，然后从这个指针上“取”m成员再取址，而m成员的地址转换后结果就是m成员相对于整个对象的偏移量（我们既然是从0地址开始算的，就不用再减去起始地址0）。
+
+```c
+ #define QUEUE_DATA(ptr, type, field) \
+  ((type *) ((char *) (ptr) - offsetof(type, field)))
+
+ #define container_of(ptr, type, member) \
+   ((type *) ((char *) (ptr) - offsetof(type, member)))
+```
+
+是因为在 ptr 偏移 offsetof(type, member) 的位置存储了 type 这个类型的某个变量的首地址地址。
+
+```c
+ struct uv__work* w;
+ QUEUE* q;
+ w = QUEUE_DATA(q, struct uv__work, wq);
+```
+
+在 q 偏移 offsetof(struct uv__work, wq) 的位置存储了 struct uv__work 这个类型的某个变量的地址。
+
+
+例子：
+
+```c
+ #include <stddef.h>
+ #include <stdio.h>
+ 
+ #define QUEUE_DATA(ptr, type, field) \
+   ((type *) ((char *) (ptr) - offsetof(type, field)))
+
+ 
+ typedef void *QUEUE[2];
+
+ struct uv_loop_s
+ {
+     int mm;
+ };
+ 
+ struct uv__work {
+   void (*work)(struct uv__work *w);
+   void (*done)(struct uv__work *w, int status);
+   struct uv_loop_s* loop;
+   void* wq[2]; // 会被作为 QUEUE 队列的节点被加入到队列中
+ };
+ 
+ 
+ void do_work(struct uv__work *w)
+ {
+     printf("do work!\n");
+ }
+ 
+ int main()
+ {
+     uv__work w;
+     printf("sizeof(uv__work) is %d.\n", sizeof(uv__work));
+     w.work = &do_work;
+     printf("w(%0x)\n", &w);
+     w.work(0);
+ 
+     QUEUE* q = &w.wq; // w.wq is the same type with q. 
+     printf("wq(%0x)\n", &q);
+ 
+     uv__work *pw = QUEUE_DATA(q, struct uv__work, wq);
+     printf("w(%0x)\n", pw);
+     pw->work(0);
+     return 0;
+ }
+```
+
+输出：
+
+```
+ sizeof(uv__work) is 40.
+ w(19798900)
+ do work!
+ wq(19798930)
+ w(19798900)
+ do work!
+```
+ 
+Notes:
+
+* 结构体的首地址比它的其它成员的地址低。
+
+
+
+
